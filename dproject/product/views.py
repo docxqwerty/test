@@ -3,11 +3,31 @@ from django.http import HttpResponse
 from rest_framework import permissions
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from .models import Access, Product
+from .models import Access, Product, Lesson
 
 
 def index(request):
     return HttpResponse('Hello')
+
+
+class LessonProgressAPIview(APIView):
+    """Fix progress for lesson"""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        data = request.data
+        id_lesson, new_viewing_time = data.get('id'), data.get('viewing_time')
+        if id_lesson > Lesson.objects.all().count():
+            return Response({"200": "Invalid id lesson"})
+        else:
+            lesson = Lesson.objects.filter(id=id_lesson)
+            stat = lesson[0].statistic_set.filter(user=request.user.id)
+            viewing_time = stat[0].viewing_time + new_viewing_time
+            if viewing_time > lesson[0].duration * 0.8:
+                stat.update(viewing_time=viewing_time, status=True)
+            else:
+                stat.update(viewing_time=viewing_time, status=False)
+            return Response({"200": f"Set new viewing_time"})
 
 
 class LessonAPIview(APIView):
